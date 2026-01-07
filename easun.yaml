@@ -1,0 +1,1033 @@
+substitutions:
+  modbus_id: "modbus_rtu"
+  modbus_addr: "0x01"
+
+esphome:
+  name: smx-ii-test
+  friendly_name: SMX-II Inverter
+
+esp8266:
+  board: d1_mini
+
+logger:
+  level: INFO
+  baud_rate: 0
+
+api:
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  min_auth_mode: WPA2
+
+uart:
+  - id: uart_bus
+    tx_pin: GPIO5  # D2
+    rx_pin: GPIO4  # D1
+    baud_rate: 9600
+    stop_bits: 1
+
+modbus:
+  - id: "${modbus_id}"
+    uart_id: uart_bus
+    send_wait_time: 200ms
+
+modbus_controller:
+  - id: "${modbus_id}_ctrl"
+    address: "${modbus_addr}"
+    modbus_id: "${modbus_id}"
+    setup_priority: -10
+    update_interval: 5s  # Global update interval for all modbus sensors
+    command_throttle: 100ms
+
+# ============ DIAGNOSTIC SENSORS ============
+sensor:
+  # Uptime
+  - platform: uptime
+    name: "Uptime"
+    update_interval: 60s
+    entity_category: diagnostic
+    icon: "mdi:clock-outline"
+
+  # ============ BATTERY SENSORS ============
+  
+  # Battery SOC - 0x0100
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    id: battery_soc
+    name: "Battery SOC"
+    address: 0x0100
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    device_class: battery
+    state_class: measurement
+    icon: "mdi:battery"
+    entity_category: diagnostic
+
+  # Battery Voltage - 0x0101
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    id: battery_voltage
+    name: "Battery Voltage"
+    address: 0x0101
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:current-dc"
+
+  # Battery Current - 0x0102
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    id: battery_current
+    name: "Battery Current"
+    address: 0x0102
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:current-dc"
+
+  # Charger Power - 0x010E
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Charger Power"
+    address: 0x010E
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    icon: "mdi:solar-power"
+
+  # ============ GRID/MAINS SENSORS ============
+  
+  # Grid Voltage - 0x0213
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Grid Voltage"
+    address: 0x0213
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:transmission-tower"
+
+  # Grid Current - 0x0214
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Grid Current"
+    address: 0x0214
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+
+  # Grid Frequency - 0x0215
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Grid Frequency"
+    address: 0x0215
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "Hz"
+    device_class: frequency
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # Charge Current from Grid - 0x021E
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Charge Current from Grid"
+    address: 0x021E
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+
+  # ============ INVERTER/LOAD SENSORS ============
+  
+  # Inverter Voltage - 0x0216
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Inverter Voltage"
+    address: 0x0216
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:power-plug"
+
+  # Inverter Current - 0x0217
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Inverter Current"
+    address: 0x0217
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+
+  # Inverter Frequency - 0x0218
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Inverter Frequency"
+    address: 0x0218
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "Hz"
+    device_class: frequency
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+
+  # Load Current - 0x0219
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Load Current"
+    address: 0x0219
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+
+  # Load Active Power - 0x021B
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Load Active Power"
+    address: 0x021B
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    icon: "mdi:power-socket"
+
+  # Load Apparent Power - 0x021C
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Load Apparent Power"
+    address: 0x021C
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "VA"
+    device_class: apparent_power
+    state_class: measurement
+    icon: "mdi:flash-circle"
+
+  # Load Ratio - 0x021F
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Load Percentage"
+    address: 0x021F
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    state_class: measurement
+    icon: "mdi:gauge"
+
+  # Bus Voltage - 0x0212
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Bus Voltage"
+    address: 0x0212
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+
+  # ============ TEMPERATURE SENSORS ============
+  
+  # Temperature DC - 0x0220
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Temperature DC"
+    address: 0x0220
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:thermometer"
+
+  # Temperature AC - 0x0221
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Temperature AC"
+    address: 0x0221
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:thermometer"
+
+  # Temperature Transformer - 0x0222
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Temperature Transformer"
+    address: 0x0222
+    register_type: holding
+    value_type: S_WORD
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:thermometer"
+
+  # ============ ENERGY STATISTICS ============
+  
+  # TODAY'S ENERGY
+  
+  # Battery Discharge Today - 0xF02E
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Battery Discharge Today"
+    address: 0xF02E
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "Ah"
+    state_class: total_increasing
+    icon: "mdi:battery-minus"
+    entity_category: diagnostic
+
+  # Battery Charge Today - 0xF02D
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Battery Charge Today"
+    address: 0xF02D
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "Ah"
+    state_class: total_increasing
+    icon: "mdi:battery-plus"
+    entity_category: diagnostic
+
+  # Load Energy Today - 0xF030
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Load Energy Today"
+    address: 0xF030
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:home-lightning-bolt"
+
+  # Load Energy from Grid Today - 0xF03D
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Load Energy from Grid Today"
+    address: 0xF03D
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:transmission-tower"
+
+  # ACCUMULATED ENERGY (LIFETIME)
+  
+  # Total Load Energy - 0xF03A
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Total Load Energy"
+    address: 0xF03A
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:home-lightning-bolt"
+    entity_category: diagnostic
+
+  # Total Charge from Grid - 0xF046
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Total Charge from Grid"
+    address: 0xF046
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:transmission-tower"
+    entity_category: diagnostic
+
+  # Total Load Energy from Grid - 0xF048
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Total Load Energy from Grid"
+    address: 0xF048
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:transmission-tower"
+    entity_category: diagnostic
+
+  # Total Battery Charge Hours - 0xF034
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Total Battery Charge Hours"
+    address: 0xF034
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "h"
+    state_class: total_increasing
+    icon: "mdi:battery-clock"
+    entity_category: diagnostic
+
+  # Total Battery Discharge Hours - 0xF036
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Total Battery Discharge Hours"
+    address: 0xF036
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "h"
+    state_class: total_increasing
+    icon: "mdi:battery-clock"
+    entity_category: diagnostic
+
+  # Total Bypass Hours - 0xF04B
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Total Bypass Hours"
+    address: 0xF04B
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "h"
+    accuracy_decimals: 1
+    state_class: total_increasing
+    icon: "mdi:clock-outline"
+    entity_category: diagnostic
+
+  # HISTORICAL DATA (LAST 3 DAYS)
+  
+  # Load Energy Yesterday - 0xF01C
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Load Energy Yesterday"
+    address: 0xF01C
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "kWh"
+    device_class: energy
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:history"
+    entity_category: diagnostic
+
+  # Load Energy 2 Days Ago - 0xF01D
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Load Energy 2 Days Ago"
+    address: 0xF01D
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "kWh"
+    device_class: energy
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:history"
+    entity_category: diagnostic
+
+  # Load Energy 3 Days Ago - 0xF01E
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Load Energy 3 Days Ago"
+    address: 0xF01E
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "kWh"
+    device_class: energy
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:history"
+    entity_category: diagnostic
+
+  # ============ SYSTEM STATUS SENSORS ============
+  
+  # Fault Code - 0x0204
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Fault Code"
+    address: 0x0204
+    register_type: holding
+    value_type: U_WORD
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+
+  # Fault Code 2 - 0x0205
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Fault Code 2"
+    address: 0x0205
+    register_type: holding
+    value_type: U_WORD
+    icon: "mdi:alert-circle"
+    entity_category: diagnostic
+
+  # ============ CONFIGURATION PARAMETERS (READ-ONLY) ============
+  
+  # Max AC Charger Current - 0xE205
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Max AC Charger Current"
+    address: 0xE205
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "A"
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.1
+    icon: "mdi:current-ac"
+    entity_category: diagnostic
+
+  # Battery Boost Voltage - 0xE008
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Battery Boost Voltage"
+    address: 0xE008
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    device_class: voltage
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.2
+    icon: "mdi:battery-charging-high"
+    entity_category: diagnostic
+
+  # Battery Float Voltage - 0xE009
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Battery Float Voltage"
+    address: 0xE009
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    device_class: voltage
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.2
+    icon: "mdi:battery-medium"
+    entity_category: diagnostic
+
+  # Battery Under Voltage Alarm - 0xE00C
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Battery Under Voltage Alarm"
+    address: 0xE00C
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    device_class: voltage
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.2
+    icon: "mdi:battery-alert"
+    entity_category: diagnostic
+
+  # Battery Over Discharge Voltage - 0xE00D
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Battery Over Discharge Voltage"
+    address: 0xE00D
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    device_class: voltage
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.2
+    icon: "mdi:battery-alert"
+    entity_category: diagnostic
+
+  # Battery Under Voltage Recovery - 0xE00B
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Battery Under Voltage Recovery"
+    address: 0xE00B
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    device_class: voltage
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.2
+    icon: "mdi:battery-sync"
+    entity_category: diagnostic
+
+  # Turn to Mains Voltage - 0xE01B
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Turn to Mains Voltage"
+    address: 0xE01B
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    device_class: voltage
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.2
+    icon: "mdi:transmission-tower"
+    entity_category: diagnostic
+
+  # Turn to Inverter Voltage - 0xE022
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Turn to Inverter Voltage"
+    address: 0xE022
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "V"
+    device_class: voltage
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.2
+    icon: "mdi:power-plug"
+    entity_category: diagnostic
+
+  # ============ CALCULATED SENSORS ============
+  
+  # Battery Power (calculated from V × I)
+  - platform: template
+    name: "Battery Power"
+    lambda: |-
+      float voltage = id(battery_voltage).state;
+      float current = id(battery_current).state;
+      if (isnan(voltage) || isnan(current)) return NAN;
+      return voltage * current;
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    update_interval: 5s
+    accuracy_decimals: 1
+    filters:
+      - throttle: 1s
+    icon: "mdi:battery-charging-high"
+
+binary_sensor:
+  # Device Status
+  - platform: status
+    name: "Status"
+    entity_category: diagnostic
+
+# ============ TEXT SENSORS ============
+text_sensor:
+  # Machine State with Labels - 0x0210
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Machine State"
+    address: 0x0210
+    register_type: holding
+    raw_encode: HEXBYTES
+    lambda: |-
+      static const char* STATES[] = {
+        "Power On", "Standby", "Initialization", "Soft Start",
+        "Running (Grid Mode)", "Running (Inverter Mode)",
+        "Inverter → Grid", "Grid → Inverter",
+        "", "", "Shutdown", "Fault"
+      };
+      uint16_t value = modbus_controller::word_from_hex_str(x, 0);
+      if (value < sizeof(STATES)/sizeof(STATES[0]) && strlen(STATES[value]) > 0) {
+        return std::string(STATES[value]);
+      }
+      char buffer[30];
+      snprintf(buffer, sizeof(buffer), "Unknown (%d)", value);
+      return std::string(buffer);
+    icon: "mdi:state-machine"
+
+  # Output Priority with Labels - 0xE204
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Output Priority"
+    address: 0xE204
+    register_type: holding
+    raw_encode: HEXBYTES
+    lambda: |-
+      static const char* PRIORITIES[] = {
+        "Solar First (SOL)", "Utility First (UTI)", "SBU Priority (SBU)"
+      };
+      uint16_t value = modbus_controller::word_from_hex_str(x, 0);
+      if (value < sizeof(PRIORITIES)/sizeof(PRIORITIES[0])) {
+        return std::string(PRIORITIES[value]);
+      }
+      char buffer[30];
+      snprintf(buffer, sizeof(buffer), "Unknown (%d)", value);
+      return std::string(buffer);
+    icon: "mdi:priority-high"
+
+  # Charger Priority with Labels - 0xE20F
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Charger Priority"
+    address: 0xE20F
+    register_type: holding
+    raw_encode: HEXBYTES
+    lambda: |-
+      static const char* CHARGE_PRIORITIES[] = {
+        "Solar First (CSO)", "Solar & Utility (CUB)", "Solar Only (SNU)", "Solar First Alt (OSO)"
+      };
+      uint16_t value = modbus_controller::word_from_hex_str(x, 0);
+      if (value < sizeof(CHARGE_PRIORITIES)/sizeof(CHARGE_PRIORITIES[0])) {
+        return std::string(CHARGE_PRIORITIES[value]);
+      }
+      char buffer[30];
+      snprintf(buffer, sizeof(buffer), "Unknown (%d)", value);
+      return std::string(buffer);
+    icon: "mdi:battery-charging"
+
+  # Battery Charge Step - 0x010B
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Battery Charge Step"
+    address: 0x010B
+    register_type: holding
+    raw_encode: HEXBYTES
+    lambda: |-
+      static const char* STEPS[] = {
+        "Not Started", "Constant Current", "Constant Voltage",
+        "Reserved", "Float Charge", "Reserved", "Active Charge", "Active Charge"
+      };
+      uint16_t value = modbus_controller::word_from_hex_str(x, 0);
+      if (value < sizeof(STEPS)/sizeof(STEPS[0])) {
+        return std::string(STEPS[value]);
+      }
+      char buffer[30];
+      snprintf(buffer, sizeof(buffer), "Unknown (%d)", value);
+      return std::string(buffer);
+    icon: "mdi:battery-charging"
+    entity_category: diagnostic
+
+# ============ WRITABLE SETTINGS (NUMBERS) ============
+number:
+  # Max AC Charger Current - 0xE205 (0-80A in 0.1A steps)
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Max AC Charger Current"
+    address: 0xE205
+    value_type: U_WORD
+    multiply: 10  # Convert 0.1A to A for display
+    unit_of_measurement: "A"
+    mode: box
+    min_value: 0
+    max_value: 80
+    step: 1
+    icon: "mdi:current-ac"
+    entity_category: config
+
+  # Battery Boost Voltage - 0xE008 (20-30V in 0.2V steps)
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Battery Boost Voltage"
+    address: 0xE008
+    value_type: U_WORD
+    multiply: 5  # Convert 0.2V to V (1/0.2 = 5)
+    unit_of_measurement: "V"
+    device_class: voltage
+    mode: box
+    min_value: 20
+    max_value: 30
+    step: 0.2
+    icon: "mdi:battery-charging-high"
+    entity_category: config
+
+  # Battery Float Voltage - 0xE009 (20-30V in 0.2V steps)
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Battery Float Voltage"
+    address: 0xE009
+    value_type: U_WORD
+    multiply: 5
+    unit_of_measurement: "V"
+    device_class: voltage
+    mode: box
+    min_value: 20
+    max_value: 30
+    step: 0.2
+    icon: "mdi:battery-medium"
+    entity_category: config
+
+  # Battery Under Voltage Alarm - 0xE00C (18-28V in 0.2V steps)
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Battery Under Voltage Alarm"
+    address: 0xE00C
+    value_type: U_WORD
+    multiply: 5
+    unit_of_measurement: "V"
+    device_class: voltage
+    mode: box
+    min_value: 18
+    max_value: 28
+    step: 0.2
+    icon: "mdi:battery-alert"
+    entity_category: config
+
+  # Battery Over Discharge Voltage - 0xE00D (18-28V in 0.2V steps)
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Battery Over Discharge Voltage"
+    address: 0xE00D
+    value_type: U_WORD
+    multiply: 5
+    unit_of_measurement: "V"
+    device_class: voltage
+    mode: box
+    min_value: 18
+    max_value: 28
+    step: 0.2
+    icon: "mdi:battery-alert"
+    entity_category: config
+
+  # Battery Under Voltage Recovery - 0xE00B (18-28V in 0.2V steps)
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Battery Under Voltage Recovery"
+    address: 0xE00B
+    value_type: U_WORD
+    multiply: 5
+    unit_of_measurement: "V"
+    device_class: voltage
+    mode: box
+    min_value: 18
+    max_value: 28
+    step: 0.2
+    icon: "mdi:battery-sync"
+    entity_category: config
+
+  # Turn to Mains Voltage - 0xE01B
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Turn to Mains Voltage"
+    address: 0xE01B
+    value_type: U_WORD
+    multiply: 5
+    unit_of_measurement: "V"
+    device_class: voltage
+    mode: box
+    min_value: 18
+    max_value: 30
+    step: 0.2
+    icon: "mdi:transmission-tower"
+    entity_category: config
+
+  # Turn to Inverter Voltage - 0xE022
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Turn to Inverter Voltage"
+    address: 0xE022
+    value_type: U_WORD
+    multiply: 5
+    unit_of_measurement: "V"
+    device_class: voltage
+    mode: box
+    min_value: 18
+    max_value: 30
+    step: 0.2
+    icon: "mdi:power-plug"
+    entity_category: config
+
+  # Over Discharge Delay - 0xE010 (seconds)
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Over Discharge Delay"
+    address: 0xE010
+    value_type: U_WORD
+    unit_of_measurement: "s"
+    mode: box
+    min_value: 0
+    max_value: 600
+    step: 10
+    icon: "mdi:timer-alert"
+    entity_category: config
+
+# ============ WRITABLE SETTINGS (SELECTS) ============
+select:
+  # Output Priority - 0xE204
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Output Priority"
+    address: 0xE204
+    value_type: U_WORD
+    optionsmap:
+      "Solar First (SOL)": 0
+      "Utility First (UTI)": 1
+      "SBU Priority": 2
+    icon: "mdi:priority-high"
+    entity_category: config
+
+  # Charger Priority - 0xE20F
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Charger Priority"
+    address: 0xE20F
+    value_type: U_WORD
+    optionsmap:
+      "Solar First (CSO)": 0
+      "Solar & Utility (CUB)": 1
+      "Solar Only (SNU)": 2
+      "Solar First Alt (OSO)": 3
+    icon: "mdi:battery-charging"
+    entity_category: config
+
+  # AC Input Voltage Range - 0xE20B
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set AC Input Voltage Range"
+    address: 0xE20B
+    value_type: U_WORD
+    optionsmap:
+      "Appliance (APL)": 0
+      "UPS": 1
+    icon: "mdi:sine-wave"
+    entity_category: config
+
+  # Output Frequency - 0xE209
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Set Output Frequency"
+    address: 0xE209
+    value_type: U_WORD
+    optionsmap:
+      "50 Hz": 5000
+      "60 Hz": 6000
+    icon: "mdi:sine-wave"
+    entity_category: config
+
+# ============ WRITABLE SETTINGS (SWITCHES) ============
+switch:
+  # Power Saving Mode - 0xE20C
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Power Saving Mode"
+    address: 0xE20C
+    register_type: holding
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:power-sleep"
+
+  # Restart on Overload - 0xE20D
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Auto Restart on Overload"
+    address: 0xE20D
+    register_type: holding
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:restart"
+
+  # Restart on Over Temperature - 0xE20E
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Auto Restart on Over Temperature"
+    address: 0xE20E
+    register_type: holding
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:restart-alert"
+
+  # Alarm Enable - 0xE210
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Alarm Enable"
+    address: 0xE210
+    register_type: holding
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:bell"
+
+  # Input Change Alarm - 0xE211
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Input Change Alarm"
+    address: 0xE211
+    register_type: holding
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:bell-alert"
+
+  # Bypass on Overload - 0xE212
+  - platform: modbus_controller
+    modbus_controller_id: "${modbus_id}_ctrl"
+    name: "Bypass Output on Overload"
+    address: 0xE212
+    register_type: holding
+    bitmask: 1
+    entity_category: config
+    icon: "mdi:electric-switch"
